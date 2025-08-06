@@ -1,27 +1,27 @@
 // stackbit.config.ts
-import { defineStackbitConfig, SiteMapEntry } from "@stackbit/types";
+import { 
+  defineStackbitConfig, 
+  SiteMapEntry, 
+  DocumentStringLikeFieldNonLocalized 
+} from "@stackbit/types";
 import { GitContentSource } from "@stackbit/cms-git";
 
 export default defineStackbitConfig({
-  // ← Add the required Stackbit version here:
   stackbitVersion: "~0.7.0",
-
-  // Your existing SSG / Node settings (optional, but recommended):
-  ssgName: "astro",     // or "nextjs" if you’re on Next.js
+  ssgName: "astro",
   nodeVersion: "18",
 
-  // 1) Wire up Git as your content source
   contentSources: [
     new GitContentSource({
       rootPath: __dirname,
-      contentDirs: ["content"],         // ← your top-level content folder
+      contentDirs: ["content"],
 
       models: [
         {
           name: "Page",
-          type: "page",                   // marks this as a page model
-          urlPath: "/{slug}",             // builds URLs like /about, /contact
-          filePath: "content/{slug}.mdx", // adjust to .md if needed
+          type: "page",
+          urlPath: "/{slug}",
+          filePath: "content/{slug}.mdx",
           fields: [
             { name: "slug",  type: "string",   required: true },
             { name: "title", type: "string",   required: true },
@@ -33,8 +33,8 @@ export default defineStackbitConfig({
     }),
   ],
 
-  // 2) (Optional) Custom sitemap logic—your URL mapping is already handled by urlPath above
   siteMap: ({ documents, models }): SiteMapEntry[] => {
+    // Only include your Page model
     const pageModelNames = models
       .filter((m) => m.type === "page")
       .map((m) => m.name);
@@ -42,7 +42,11 @@ export default defineStackbitConfig({
     return documents
       .filter((doc) => pageModelNames.includes(doc.modelName))
       .map((doc) => {
-        const slug = String(doc.fields.slug.value);
+        // Cast to the proper field type so .value exists:
+        const slugField = doc.fields
+          .slug as DocumentStringLikeFieldNonLocalized;
+
+        const slug = slugField.value;
         return {
           stableId: doc.id,
           urlPath: slug === "index" ? "/" : `/${slug}/`,
