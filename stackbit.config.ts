@@ -1,24 +1,27 @@
 // stackbit.config.ts
 import { defineStackbitConfig, SiteMapEntry } from "@stackbit/types";
-import { GitContentSource }        from "@stackbit/cms-git";
+import { GitContentSource } from "@stackbit/cms-git";
 
 export default defineStackbitConfig({
-  // …any other top-level settings you have…
+  // ← Add the required Stackbit version here:
+  stackbitVersion: "~0.7.0",
 
+  // Your existing SSG / Node settings (optional, but recommended):
+  ssgName: "astro",     // or "nextjs" if you’re on Next.js
+  nodeVersion: "18",
+
+  // 1) Wire up Git as your content source
   contentSources: [
     new GitContentSource({
       rootPath: __dirname,
-
-      // 1) point at your actual content folder
-      contentDirs: ["content"],
+      contentDirs: ["content"],         // ← your top-level content folder
 
       models: [
         {
           name: "Page",
-          type: "page",                  // mark it as a page model
-          urlPath: "/{slug}",            // will generate /about, /contact, etc.
-          // match whatever file extension you have (mdx or md)
-          filePath: "content/{slug}.mdx",
+          type: "page",                   // marks this as a page model
+          urlPath: "/{slug}",             // builds URLs like /about, /contact
+          filePath: "content/{slug}.mdx", // adjust to .md if needed
           fields: [
             { name: "slug",  type: "string",   required: true },
             { name: "title", type: "string",   required: true },
@@ -30,14 +33,14 @@ export default defineStackbitConfig({
     }),
   ],
 
-  // 3) optional: custom sitemap logic
+  // 2) (Optional) Custom sitemap logic—your URL mapping is already handled by urlPath above
   siteMap: ({ documents, models }): SiteMapEntry[] => {
-    const pageNames = models
+    const pageModelNames = models
       .filter((m) => m.type === "page")
       .map((m) => m.name);
 
     return documents
-      .filter((doc) => pageNames.includes(doc.modelName))
+      .filter((doc) => pageModelNames.includes(doc.modelName))
       .map((doc) => {
         const slug = String(doc.fields.slug.value);
         return {
