@@ -1,58 +1,51 @@
-import { defineStackbitConfig, DocumentStringLikeFieldNonLocalized, SiteMapEntry } from '@stackbit/types';
-import { GitContentSource } from '@stackbit/cms-git';
-import { allModels } from 'sources/local/models';
+// stackbit.config.ts
+import { defineStackbitConfig, SiteMapEntry } from "@stackbit/types";
+import { GitContentSource }        from "@stackbit/cms-git";
 
-const gitContentSource = new GitContentSource({
-    rootPath: __dirname,
-    contentDirs: ['content'],
-    models: Object.values(allModels),
-    assetsConfig: {
-        referenceType: 'static',
-        staticDir: 'public',
-        uploadDir: 'images',
-        publicPath: '/'
-    }
+export default defineStackbitConfig({
+  // …any other top-level settings you have…
+
+  contentSources: [
+    new GitContentSource({
+      rootPath: __dirname,
+
+      // 1) point at your actual content folder
+      contentDirs: ["content"],
+
+      models: [
+        {
+          name: "Page",
+          type: "page",                  // mark it as a page model
+          urlPath: "/{slug}",            // will generate /about, /contact, etc.
+          // match whatever file extension you have (mdx or md)
+          filePath: "content/{slug}.mdx",
+          fields: [
+            { name: "slug",  type: "string",   required: true },
+            { name: "title", type: "string",   required: true },
+            { name: "body",  type: "markdown", required: true },
+            { name: "image", type: "image",    required: false },
+          ],
+        },
+      ],
+    }),
+  ],
+
+  // 3) optional: custom sitemap logic
+  siteMap: ({ documents, models }): SiteMapEntry[] => {
+    const pageNames = models
+      .filter((m) => m.type === "page")
+      .map((m) => m.name);
+
+    return documents
+      .filter((doc) => pageNames.includes(doc.modelName))
+      .map((doc) => {
+        const slug = String(doc.fields.slug.value);
+        return {
+          stableId: doc.id,
+          urlPath: slug === "index" ? "/" : `/${slug}/`,
+          document: doc,
+          isHomePage: slug === "index",
+        };
+      });
+  },
 });
-
-export const config = defineStackbitConfig({
-    stackbitVersion: '~0.7.0',
-    ssgName: 'nextjs',
-    nodeVersion: '18',
-    styleObjectModelName: 'ThemeStyle',
-    contentSources: [gitContentSource],
-    presetSource: {
-        type: 'files',
-        presetDirs: ['sources/local/presets']
-    },
-    siteMap: ({ documents, models }): SiteMapEntry[] => {
-        const pageModels = models.filter((model) => model.type === 'page').map((model) => model.name);
-        return documents
-            .filter((document) => pageModels.includes(document.modelName))
-            .map((document) => {
-                let slug = (document.fields.slug as DocumentStringLikeFieldNonLocalized)?.value;
-                if (!slug) return null;
-                /* Remove the leading slash in order to generate correct urlPath
-                regardless of whether the slug is '/', 'slug' or '/slug' */
-                slug = slug.replace(/^\/+/, '');
-                switch (document.modelName) {
-                    case 'PostFeedLayout':
-                        return {
-                            urlPath: '/blog',
-                            document: document
-                        };
-                    case 'PostLayout':
-                        return {
-                            urlPath: `/blog/${slug}`,
-                            document: document
-                        };
-                    default:
-                        return {
-                            urlPath: `/${slug}`,
-                            document: document
-                        };
-                }
-            });
-    }
-});
-
-export default config;
